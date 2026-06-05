@@ -16,7 +16,7 @@
 
 ## ER-диаграмма
 
-"""plantuml
+```plantuml
 @startuml
 !define table class
 
@@ -51,7 +51,7 @@ table "dw.unified_employee" {
     salary : REAL
     bonus : REAL
 }
-@enduml"""
+@enduml```
 
 ---
 
@@ -84,7 +84,7 @@ table "dw.unified_employee" {
 
 # Пример вывода в консоль
 
-"""1. Создание баз данных...
+```1. Создание баз данных...
 2. Заполнение источников данными (5 вариаций ФИО)...
 3. Запуск ETL (сбор и объединение)...
 4. Результат объединения:
@@ -96,7 +96,7 @@ ID: 1
 Исходное из source2: иванов иван иванович
 Роль: Team Lead, Проект: Платформа аналитики, Стек: Python, SQL, Airflow
 Компетенции: Python, SQL, DWH, Зарплата: 120000.0, Премия: 15000.0
-..."""
+...```
 
 Можно открыть `datawarehouse.db` в любом SQLite-браузере (например, SQLiteStudio) и выполнить "SELECT * FROM unified_employee;"
 
@@ -115,11 +115,11 @@ ID: 1
 
 Нормализация ФИО: алгоритм, который позволяет сопоставить записи из разных БД
 
-"""def normalize_name(name):
+```def normalize_name(name):
     cleaned = re.sub(r'[^\w\s]', '', name)
     words = cleaned.lower().split()
     words.sort()
-    return " ".join(words)"""
+    return " ".join(words)```
 
 # Пример работы:
 

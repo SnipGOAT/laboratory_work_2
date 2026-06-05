@@ -1,0 +1,35 @@
+@startuml
+!define table class
+
+table "source1.projects" {
+    * id : INTEGER <<PK>>
+    --
+    full_name : TEXT
+    role : TEXT
+    project_name : TEXT
+    tech_stack : TEXT
+}
+
+table "source2.resumes" {
+    * id : INTEGER <<PK>>
+    --
+    full_name : TEXT
+    competencies : TEXT
+    salary : REAL
+    bonus : REAL
+}
+
+table "dw.unified_employee" {
+    * id : INTEGER <<PK>>
+    --
+    normalized_name : TEXT <<UK>>
+    original_name_src1 : TEXT
+    original_name_src2 : TEXT
+    role : TEXT
+    project_name : TEXT
+    tech_stack : TEXT
+    competencies : TEXT
+    salary : REAL
+    bonus : REAL
+}
+@enduml

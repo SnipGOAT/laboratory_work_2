@@ -51,7 +51,8 @@ table "dw.unified_employee" {
     salary : REAL
     bonus : REAL
 }
-@enduml```
+@enduml
+```
 
 ---
 
@@ -96,7 +97,8 @@ ID: 1
 Исходное из source2: иванов иван иванович
 Роль: Team Lead, Проект: Платформа аналитики, Стек: Python, SQL, Airflow
 Компетенции: Python, SQL, DWH, Зарплата: 120000.0, Премия: 15000.0
-...```
+...
+```
 
 Можно открыть `datawarehouse.db` в любом SQLite-браузере (например, SQLiteStudio) и выполнить "SELECT * FROM unified_employee;"
 
@@ -119,7 +121,8 @@ ID: 1
     cleaned = re.sub(r'[^\w\s]', '', name)
     words = cleaned.lower().split()
     words.sort()
-    return " ".join(words)```
+    return " ".join(words)
+```
 
 # Пример работы:
 

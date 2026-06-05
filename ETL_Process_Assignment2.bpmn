@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0qurx4e" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.47.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.24.0">
+  <bpmn:process id="Process_1b2ivwk" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Начало ETL-процесса">
+      <bpmn:outgoing>Flow_015eroy</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="Event_1ko2vhh">
+      <bpmn:incoming>Flow_1vw7ynh</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:parallelGateway id="Gateway_0wchtq5">
+      <bpmn:extensionElements />
+      <bpmn:incoming>Flow_015eroy</bpmn:incoming>
+      <bpmn:outgoing>Flow_1hk1s1z</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0t23213</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_015eroy" sourceRef="StartEvent_1" targetRef="Gateway_0wchtq5" />
+    <bpmn:task id="Task_Read_Source1" name="Подключиться к source1.db">
+      <bpmn:incoming>Flow_1hk1s1z</bpmn:incoming>
+      <bpmn:outgoing>Flow_1tx3b6d</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Activity_1czcqqw" name="Подключиться к source2.db">
+      <bpmn:incoming>Flow_0t23213</bpmn:incoming>
+      <bpmn:outgoing>Flow_0yl1jjd</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_1hk1s1z" sourceRef="Gateway_0wchtq5" targetRef="Task_Read_Source1" />
+    <bpmn:sequenceFlow id="Flow_0t23213" sourceRef="Gateway_0wchtq5" targetRef="Activity_1czcqqw" />
+    <bpmn:task id="Task_Merge_Data" name="Объединить данные в словарь">
+      <bpmn:incoming>Flow_0ieu2e1</bpmn:incoming>
+      <bpmn:outgoing>Flow_1x15v0f</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_Load_To_DWH" name="Вставить объединённые данные в ХД">
+      <bpmn:incoming>Flow_1x15v0f</bpmn:incoming>
+      <bpmn:outgoing>Flow_1delm57</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Activity_1dyn6tm" name="Закрыть соединения с БД">
+      <bpmn:incoming>Flow_1delm57</bpmn:incoming>
+      <bpmn:outgoing>Flow_1vw7ynh</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:parallelGateway id="Gateway_0d6h69l">
+      <bpmn:incoming>Flow_1tx3b6d</bpmn:incoming>
+      <bpmn:incoming>Flow_0yl1jjd</bpmn:incoming>
+      <bpmn:outgoing>Flow_0ieu2e1</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_1tx3b6d" sourceRef="Task_Read_Source1" targetRef="Gateway_0d6h69l" />
+    <bpmn:sequenceFlow id="Flow_0yl1jjd" sourceRef="Activity_1czcqqw" targetRef="Gateway_0d6h69l" />
+    <bpmn:sequenceFlow id="Flow_0ieu2e1" sourceRef="Gateway_0d6h69l" targetRef="Task_Merge_Data" />
+    <bpmn:sequenceFlow id="Flow_1x15v0f" sourceRef="Task_Merge_Data" targetRef="Task_Load_To_DWH" />
+    <bpmn:sequenceFlow id="Flow_1delm57" sourceRef="Task_Load_To_DWH" targetRef="Activity_1dyn6tm" />
+    <bpmn:sequenceFlow id="Flow_1vw7ynh" sourceRef="Activity_1dyn6tm" targetRef="Event_1ko2vhh" />
+    <bpmn:dataObjectReference id="DataObject_Source1_Records" name="Записи из source1.db" dataObjectRef="DataObject_0u8zs6y" />
+    <bpmn:dataObject id="DataObject_0u8zs6y" />
+    <bpmn:dataObjectReference id="DataObject_Source2_Records" name="Записи из source2.db" dataObjectRef="DataObject_0luimmb" />
+    <bpmn:dataObject id="DataObject_0luimmb" />
+    <bpmn:dataObjectReference id="DataObject_merged_data" name="merged_data" dataObjectRef="DataObject_1xmi6bu" />
+    <bpmn:dataObject id="DataObject_1xmi6bu" />
+    <bpmn:textAnnotation id="TextAnnotation_1b00sqz" />
+    <bpmn:association id="Association_029fyyb" associationDirection="None" sourceRef="DataObject_Source1_Records" targetRef="TextAnnotation_1b00sqz" />
+    <bpmn:textAnnotation id="Task_Read_Source2" />
+    <bpmn:association id="Association_1hhp07i" associationDirection="None" sourceRef="DataObject_Source2_Records" targetRef="Task_Read_Source2" />
+    <bpmn:textAnnotation id="TextAnnotation_1gn3j3x" />
+    <bpmn:association id="Association_0o2aw0a" associationDirection="None" sourceRef="DataObject_merged_data" targetRef="TextAnnotation_1gn3j3x" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1b2ivwk">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="202" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="137" y="245" width="66" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0wchtq5_di" bpmnElement="Gateway_0wchtq5">
+        <dc:Bounds x="335" y="195" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_16erlpq_di" bpmnElement="Task_Read_Source1">
+        <dc:Bounds x="450" y="210" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1czcqqw_di" bpmnElement="Activity_1czcqqw">
+        <dc:Bounds x="450" y="300" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1tqabjj_di" bpmnElement="Task_Load_To_DWH">
+        <dc:Bounds x="800" y="240" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ko2vhh_di" bpmnElement="Event_1ko2vhh">
+        <dc:Bounds x="952" y="202" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1l509w0_di" bpmnElement="Task_Merge_Data">
+        <dc:Bounds x="800" y="100" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1dyn6tm_di" bpmnElement="Activity_1dyn6tm">
+        <dc:Bounds x="920" y="370" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0d6h69l_di" bpmnElement="Gateway_0d6h69l">
+        <dc:Bounds x="705" y="225" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObjectReference_0yxg5es_di" bpmnElement="DataObject_Source1_Records">
+        <dc:Bounds x="652" y="165" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="643" y="222" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObjectReference_1pq6its_di" bpmnElement="DataObject_Source2_Records">
+        <dc:Bounds x="652" y="365" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="643" y="422" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObjectReference_1m7tfar_di" bpmnElement="DataObject_merged_data">
+        <dc:Bounds x="982" y="115" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="968" y="172" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_029fyyb_di" bpmnElement="Association_029fyyb">
+        <di:waypoint x="652" y="196" />
+        <di:waypoint x="543" y="235" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_1hhp07i_di" bpmnElement="Association_1hhp07i">
+        <di:waypoint x="652" y="385" />
+        <di:waypoint x="550" y="355" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0o2aw0a_di" bpmnElement="Association_0o2aw0a">
+        <di:waypoint x="982" y="140" />
+        <di:waypoint x="890" y="138" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_015eroy_di" bpmnElement="Flow_015eroy">
+        <di:waypoint x="188" y="220" />
+        <di:waypoint x="335" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1hk1s1z_di" bpmnElement="Flow_1hk1s1z">
+        <di:waypoint x="385" y="220" />
+        <di:waypoint x="450" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0t23213_di" bpmnElement="Flow_0t23213">
+        <di:waypoint x="360" y="245" />
+        <di:waypoint x="360" y="340" />
+        <di:waypoint x="450" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1tx3b6d_di" bpmnElement="Flow_1tx3b6d">
+        <di:waypoint x="550" y="250" />
+        <di:waypoint x="705" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0yl1jjd_di" bpmnElement="Flow_0yl1jjd">
+        <di:waypoint x="550" y="340" />
+        <di:waypoint x="730" y="340" />
+        <di:waypoint x="730" y="275" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ieu2e1_di" bpmnElement="Flow_0ieu2e1">
+        <di:waypoint x="730" y="225" />
+        <di:waypoint x="730" y="160" />
+        <di:waypoint x="800" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1x15v0f_di" bpmnElement="Flow_1x15v0f">
+        <di:waypoint x="850" y="180" />
+        <di:waypoint x="850" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1delm57_di" bpmnElement="Flow_1delm57">
+        <di:waypoint x="850" y="320" />
+        <di:waypoint x="850" y="345" />
+        <di:waypoint x="970" y="345" />
+        <di:waypoint x="970" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vw7ynh_di" bpmnElement="Flow_1vw7ynh">
+        <di:waypoint x="970" y="370" />
+        <di:waypoint x="970" y="238" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="TextAnnotation_1b00sqz_di" bpmnElement="TextAnnotation_1b00sqz">
+        <dc:Bounds x="450" y="235" width="99.98924268502583" height="29.999462134251292" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_19iwybl_di" bpmnElement="Task_Read_Source2">
+        <dc:Bounds x="450" y="325" width="99.98924268502583" height="29.999462134251292" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_1gn3j3x_di" bpmnElement="TextAnnotation_1gn3j3x">
+        <dc:Bounds x="810" y="122" width="80" height="35" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

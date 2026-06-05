@@ -16,7 +16,7 @@
 
 ## ER-диаграмма
 
-```plantuml
+"""plantuml
 @startuml
 !define table class
 
@@ -51,7 +51,7 @@ table "dw.unified_employee" {
     salary : REAL
     bonus : REAL
 }
-@enduml
+@enduml"""
 
 ---
 

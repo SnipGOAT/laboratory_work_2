@@ -1,7 +1,8 @@
 @startuml
 !define table class
 
-' Исходные таблицы (нормализованы для OLTP)
+title "ER-диаграмма – нормализованные источники и денормализованное ХД"
+
 table "source1.projects" {
     * id : INTEGER <<PK>>
     --
@@ -20,7 +21,6 @@ table "source2.resumes" {
     bonus : REAL
 }
 
-' Денормализованная таблица хранилища данных (звезда)
 table "dw.unified_employee" {
     * id : INTEGER <<PK>>
     --
@@ -35,7 +35,6 @@ table "dw.unified_employee" {
     bonus : REAL
 }
 
-' Справочник правил нормализации (синонимы, инициалы)
 table "dw.normalization_rules" {
     * rule_id : INTEGER <<PK>>
     --
@@ -45,10 +44,10 @@ table "dw.normalization_rules" {
 }
 
 note right of dw.normalization_rules
-  Примеры:
-  ('Георгий','Егор','synonym')
-  ('С.С.','Сергей Сергеевич','initials')
-  ('д-р','доктор','abbr')
+  Примеры правил:
+  ('георгий','егор','synonym')
+  ('с.с.','сергей сергеевич','initials')
+  ('а.а.','алексей алексеевич','initials')
 end note
 
 @enduml

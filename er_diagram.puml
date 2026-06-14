@@ -1,6 +1,7 @@
 @startuml
 !define table class
 
+' Исходные таблицы (нормализованы для OLTP)
 table "source1.projects" {
     * id : INTEGER <<PK>>
     --
@@ -19,10 +20,11 @@ table "source2.resumes" {
     bonus : REAL
 }
 
+' Денормализованная таблица хранилища данных (звезда)
 table "dw.unified_employee" {
     * id : INTEGER <<PK>>
     --
-    normalized_name : TEXT <<UK>>
+    normalized_key : TEXT <<UK>>
     original_name_src1 : TEXT
     original_name_src2 : TEXT
     role : TEXT
@@ -32,4 +34,21 @@ table "dw.unified_employee" {
     salary : REAL
     bonus : REAL
 }
+
+' Справочник правил нормализации (синонимы, инициалы)
+table "dw.normalization_rules" {
+    * rule_id : INTEGER <<PK>>
+    --
+    original_form : TEXT
+    canonical_form : TEXT
+    rule_type : TEXT   -- 'synonym', 'initials', 'abbr'
+}
+
+note right of dw.normalization_rules
+  Примеры:
+  ('Георгий','Егор','synonym')
+  ('С.С.','Сергей Сергеевич','initials')
+  ('д-р','доктор','abbr')
+end note
+
 @enduml

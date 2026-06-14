@@ -1,52 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="ETL_Process_Clean" name="ETL: сбор и объединение данных" isExecutable="true">
+  <bpmn:process id="ETL_Process_Detailed" name="ETL: сбор, нормализация, объединение данных" isExecutable="true">
+    
     <!-- Start Event -->
     <bpmn:startEvent id="StartEvent_1" name="Начало ETL">
       <bpmn:outgoing>Flow_to_ParallelGateway</bpmn:outgoing>
     </bpmn:startEvent>
     
-    <!-- Параллельный шлюз (разветвление) -->
-    <bpmn:parallelGateway id="ParallelGateway_1" name="Разветвление">
+    <!-- Параллельный шлюз (разветвление на два источника) -->
+    <bpmn:parallelGateway id="ParallelGateway_Fork" name="Разветвление по источникам">
       <bpmn:incoming>Flow_to_ParallelGateway</bpmn:incoming>
-      <bpmn:outgoing>Flow_to_Extract1</bpmn:outgoing>
-      <bpmn:outgoing>Flow_to_Extract2</bpmn:outgoing>
+      <bpmn:outgoing>Flow_to_ExtractSource1</bpmn:outgoing>
+      <bpmn:outgoing>Flow_to_ExtractSource2</bpmn:outgoing>
     </bpmn:parallelGateway>
     
-    <!-- Извлечение из source1 -->
-    <bpmn:serviceTask id="ExtractSource1" name="Извлечь данные из source1.db">
-      <bpmn:incoming>Flow_to_Extract1</bpmn:incoming>
-      <bpmn:outgoing>Flow_from_Extract1</bpmn:outgoing>
-    </bpmn:serviceTask>
-    
-    <!-- Извлечение из source2 -->
-    <bpmn:serviceTask id="ExtractSource2" name="Извлечь данные из source2.db">
-      <bpmn:incoming>Flow_to_Extract2</bpmn:incoming>
-      <bpmn:outgoing>Flow_from_Extract2</bpmn:outgoing>
+    <!-- ============== Ветка 1: source1 ============== -->
+    <bpmn:serviceTask id="ExtractSource1" name="Подключиться к source1.db и извлечь записи из projects">
+      <bpmn:incoming>Flow_to_ExtractSource1</bpmn:incoming>
+      <bpmn:outgoing>Flow_From_Extract1</bpmn:outgoing>
     </bpmn:serviceTask>
     
     <!-- Подпроцесс нормализации для source1 -->
-    <bpmn:subProcess id="SubProcess_Norm1" name="Нормализация ФИО (source1)">
-      <bpmn:incoming>Flow_from_Extract1</bpmn:incoming>
-      <bpmn:outgoing>Flow_from_Norm1</bpmn:outgoing>
-      <bpmn:startEvent id="SubStart1" />
-      <bpmn:scriptTask id="CleanTask1" name="Очистка и нижний регистр">
+    <bpmn:subProcess id="NormalizeSource1" name="Нормализация ФИО (source1)">
+      <bpmn:incoming>Flow_From_Extract1</bpmn:incoming>
+      <bpmn:outgoing>Flow_From_Norm1</bpmn:outgoing>
+      <bpmn:startEvent id="SubStart1" name="Старт норм." />
+      <bpmn:scriptTask id="CleanTask1" name="1. Очистка: удалить спецсимволы, привести к нижнему регистру">
         <bpmn:incoming>Flow_Sub1_1</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub1_2</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="TokenizeTask1" name="Разбивка на токены">
+      <bpmn:scriptTask id="TokenizeTask1" name="2. Токенизация: разбить на слова/инициалы">
         <bpmn:incoming>Flow_Sub1_2</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub1_3</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="SynonymTask1" name="Замена инициалов и синонимов">
+      <bpmn:scriptTask id="SynonymTask1" name="3. Замена инициалов (С.С. → Сергей Сергеевич) и синонимов (Георгий→Егор)">
         <bpmn:incoming>Flow_Sub1_3</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub1_4</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="SortTask1" name="Сортировка и склейка">
+      <bpmn:scriptTask id="SortTask1" name="4. Сортировка токенов и объединение в строку">
         <bpmn:incoming>Flow_Sub1_4</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub1_5</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:endEvent id="SubEnd1" />
+      <bpmn:endEvent id="SubEnd1" name="Конец норм." />
       <bpmn:sequenceFlow id="Flow_Sub1_1" sourceRef="SubStart1" targetRef="CleanTask1" />
       <bpmn:sequenceFlow id="Flow_Sub1_2" sourceRef="CleanTask1" targetRef="TokenizeTask1" />
       <bpmn:sequenceFlow id="Flow_Sub1_3" sourceRef="TokenizeTask1" targetRef="SynonymTask1" />
@@ -54,28 +49,33 @@
       <bpmn:sequenceFlow id="Flow_Sub1_5" sourceRef="SortTask1" targetRef="SubEnd1" />
     </bpmn:subProcess>
     
-    <!-- Подпроцесс нормализации для source2 -->
-    <bpmn:subProcess id="SubProcess_Norm2" name="Нормализация ФИО (source2)">
-      <bpmn:incoming>Flow_from_Extract2</bpmn:incoming>
-      <bpmn:outgoing>Flow_from_Norm2</bpmn:outgoing>
-      <bpmn:startEvent id="SubStart2" />
-      <bpmn:scriptTask id="CleanTask2" name="Очистка и нижний регистр">
+    <!-- ============== Ветка 2: source2 ============== -->
+    <bpmn:serviceTask id="ExtractSource2" name="Подключиться к source2.db и извлечь записи из resumes">
+      <bpmn:incoming>Flow_to_ExtractSource2</bpmn:incoming>
+      <bpmn:outgoing>Flow_From_Extract2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:subProcess id="NormalizeSource2" name="Нормализация ФИО (source2)">
+      <bpmn:incoming>Flow_From_Extract2</bpmn:incoming>
+      <bpmn:outgoing>Flow_From_Norm2</bpmn:outgoing>
+      <bpmn:startEvent id="SubStart2" name="Старт норм." />
+      <bpmn:scriptTask id="CleanTask2" name="1. Очистка и нижний регистр">
         <bpmn:incoming>Flow_Sub2_1</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub2_2</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="TokenizeTask2" name="Разбивка на токены">
+      <bpmn:scriptTask id="TokenizeTask2" name="2. Токенизация">
         <bpmn:incoming>Flow_Sub2_2</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub2_3</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="SynonymTask2" name="Замена инициалов и синонимов">
+      <bpmn:scriptTask id="SynonymTask2" name="3. Замена инициалов и синонимов">
         <bpmn:incoming>Flow_Sub2_3</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub2_4</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="SortTask2" name="Сортировка и склейка">
+      <bpmn:scriptTask id="SortTask2" name="4. Сортировка и склейка">
         <bpmn:incoming>Flow_Sub2_4</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub2_5</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:endEvent id="SubEnd2" />
+      <bpmn:endEvent id="SubEnd2" name="Конец норм." />
       <bpmn:sequenceFlow id="Flow_Sub2_1" sourceRef="SubStart2" targetRef="CleanTask2" />
       <bpmn:sequenceFlow id="Flow_Sub2_2" sourceRef="CleanTask2" targetRef="TokenizeTask2" />
       <bpmn:sequenceFlow id="Flow_Sub2_3" sourceRef="TokenizeTask2" targetRef="SynonymTask2" />
@@ -84,21 +84,47 @@
     </bpmn:subProcess>
     
     <!-- Сведение параллельных веток -->
-    <bpmn:parallelGateway id="ParallelGateway_2" name="Сведение">
-      <bpmn:incoming>Flow_from_Norm1</bpmn:incoming>
-      <bpmn:incoming>Flow_from_Norm2</bpmn:incoming>
+    <bpmn:parallelGateway id="ParallelGateway_Join" name="Сведение веток">
+      <bpmn:incoming>Flow_From_Norm1</bpmn:incoming>
+      <bpmn:incoming>Flow_From_Norm2</bpmn:incoming>
       <bpmn:outgoing>Flow_to_Merge</bpmn:outgoing>
     </bpmn:parallelGateway>
     
-    <!-- Объединение данных -->
-    <bpmn:serviceTask id="MergeTask" name="Объединить данные в словарь по нормализованному ключу">
+    <!-- Объединение данных в словарь -->
+    <bpmn:serviceTask id="MergeTask" name="Объединить записи в словарь по нормализованному ключу">
       <bpmn:incoming>Flow_to_Merge</bpmn:incoming>
-      <bpmn:outgoing>Flow_to_Load</bpmn:outgoing>
+      <bpmn:outgoing>Flow_to_CheckExists</bpmn:outgoing>
     </bpmn:serviceTask>
     
-    <!-- Загрузка в ХД -->
-    <bpmn:serviceTask id="LoadTask" name="Загрузить объединённые записи в ХД">
-      <bpmn:incoming>Flow_to_Load</bpmn:incoming>
+    <!-- Проверка существования записи в ХД -->
+    <bpmn:exclusiveGateway id="CheckExistsGateway" name="Запись уже существует?">
+      <bpmn:incoming>Flow_to_CheckExists</bpmn:incoming>
+      <bpmn:outgoing>Flow_If_Exists</bpmn:outgoing>
+      <bpmn:outgoing>Flow_If_NotExists</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    
+    <!-- Ветка обновления -->
+    <bpmn:serviceTask id="UpdateRecord" name="Обновить существующую запись в unified_employee">
+      <bpmn:incoming>Flow_If_Exists</bpmn:incoming>
+      <bpmn:outgoing>Flow_After_Update</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- Ветка вставки -->
+    <bpmn:serviceTask id="InsertRecord" name="Вставить новую запись в unified_employee">
+      <bpmn:incoming>Flow_If_NotExists</bpmn:incoming>
+      <bpmn:outgoing>Flow_After_Insert</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- Закрытие соединений -->
+    <bpmn:serviceTask id="CloseConnections" name="Закрыть соединения с БД">
+      <bpmn:incoming>Flow_After_Update</bpmn:incoming>
+      <bpmn:incoming>Flow_After_Insert</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_Log</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <!-- Логирование -->
+    <bpmn:serviceTask id="LogTask" name="Записать в лог: количество обработанных записей">
+      <bpmn:incoming>Flow_to_Log</bpmn:incoming>
       <bpmn:outgoing>Flow_to_End</bpmn:outgoing>
     </bpmn:serviceTask>
     
@@ -107,26 +133,46 @@
       <bpmn:incoming>Flow_to_End</bpmn:incoming>
     </bpmn:endEvent>
     
-    <!-- Sequence Flows верхнего уровня -->
-    <bpmn:sequenceFlow id="Flow_to_ParallelGateway" sourceRef="StartEvent_1" targetRef="ParallelGateway_1" />
-    <bpmn:sequenceFlow id="Flow_to_Extract1" sourceRef="ParallelGateway_1" targetRef="ExtractSource1" />
-    <bpmn:sequenceFlow id="Flow_to_Extract2" sourceRef="ParallelGateway_1" targetRef="ExtractSource2" />
-    <bpmn:sequenceFlow id="Flow_from_Extract1" sourceRef="ExtractSource1" targetRef="SubProcess_Norm1" />
-    <bpmn:sequenceFlow id="Flow_from_Extract2" sourceRef="ExtractSource2" targetRef="SubProcess_Norm2" />
-    <bpmn:sequenceFlow id="Flow_from_Norm1" sourceRef="SubProcess_Norm1" targetRef="ParallelGateway_2" />
-    <bpmn:sequenceFlow id="Flow_from_Norm2" sourceRef="SubProcess_Norm2" targetRef="ParallelGateway_2" />
-    <bpmn:sequenceFlow id="Flow_to_Merge" sourceRef="ParallelGateway_2" targetRef="MergeTask" />
-    <bpmn:sequenceFlow id="Flow_to_Load" sourceRef="MergeTask" targetRef="LoadTask" />
-    <bpmn:sequenceFlow id="Flow_to_End" sourceRef="LoadTask" targetRef="EndEvent_1" />
+    <!-- Sequence Flows -->
+    <bpmn:sequenceFlow id="Flow_to_ParallelGateway" sourceRef="StartEvent_1" targetRef="ParallelGateway_Fork" />
+    <bpmn:sequenceFlow id="Flow_to_ExtractSource1" sourceRef="ParallelGateway_Fork" targetRef="ExtractSource1" />
+    <bpmn:sequenceFlow id="Flow_to_ExtractSource2" sourceRef="ParallelGateway_Fork" targetRef="ExtractSource2" />
+    <bpmn:sequenceFlow id="Flow_From_Extract1" sourceRef="ExtractSource1" targetRef="NormalizeSource1" />
+    <bpmn:sequenceFlow id="Flow_From_Extract2" sourceRef="ExtractSource2" targetRef="NormalizeSource2" />
+    <bpmn:sequenceFlow id="Flow_From_Norm1" sourceRef="NormalizeSource1" targetRef="ParallelGateway_Join" />
+    <bpmn:sequenceFlow id="Flow_From_Norm2" sourceRef="NormalizeSource2" targetRef="ParallelGateway_Join" />
+    <bpmn:sequenceFlow id="Flow_to_Merge" sourceRef="ParallelGateway_Join" targetRef="MergeTask" />
+    <bpmn:sequenceFlow id="Flow_to_CheckExists" sourceRef="MergeTask" targetRef="CheckExistsGateway" />
+    <bpmn:sequenceFlow id="Flow_If_Exists" sourceRef="CheckExistsGateway" targetRef="UpdateRecord" />
+    <bpmn:sequenceFlow id="Flow_If_NotExists" sourceRef="CheckExistsGateway" targetRef="InsertRecord" />
+    <bpmn:sequenceFlow id="Flow_After_Update" sourceRef="UpdateRecord" targetRef="CloseConnections" />
+    <bpmn:sequenceFlow id="Flow_After_Insert" sourceRef="InsertRecord" targetRef="CloseConnections" />
+    <bpmn:sequenceFlow id="Flow_to_Log" sourceRef="CloseConnections" targetRef="LogTask" />
+    <bpmn:sequenceFlow id="Flow_to_End" sourceRef="LogTask" targetRef="EndEvent_1" />
+    
+    <!-- ============== Data Objects и Associations ============== -->
+    <bpmn:dataObject id="DataObject_Src1_Records" name="source1_records" />
+    <bpmn:dataObject id="DataObject_Src2_Records" name="source2_records" />
+    <bpmn:dataObject id="DataObject_Normalized1" name="normalized_keys_src1" />
+    <bpmn:dataObject id="DataObject_Normalized2" name="normalized_keys_src2" />
+    <bpmn:dataObject id="DataObject_MergedDict" name="merged_dictionary" />
+    
+    <!-- Associations (связываем DataObject с задачами) -->
+    <bpmn:association id="Assoc_Src1" sourceRef="ExtractSource1" targetRef="DataObject_Src1_Records" associationDirection="None" />
+    <bpmn:association id="Assoc_Src2" sourceRef="ExtractSource2" targetRef="DataObject_Src2_Records" associationDirection="None" />
+    <bpmn:association id="Assoc_Norm1" sourceRef="NormalizeSource1" targetRef="DataObject_Normalized1" associationDirection="None" />
+    <bpmn:association id="Assoc_Norm2" sourceRef="NormalizeSource2" targetRef="DataObject_Normalized2" associationDirection="None" />
+    <bpmn:association id="Assoc_Merge" sourceRef="MergeTask" targetRef="DataObject_MergedDict" associationDirection="None" />
   </bpmn:process>
   
   <!-- BPMN Diagram (графическое расположение) -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ETL_Process_Clean">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ETL_Process_Detailed">
+      <!-- Shapes -->
       <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
         <dc:Bounds x="80" y="180" width="36" height="36" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ParallelGateway_1_di" bpmnElement="ParallelGateway_1">
+      <bpmndi:BPMNShape id="ParallelGateway_Fork_di" bpmnElement="ParallelGateway_Fork">
         <dc:Bounds x="160" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ExtractSource1_di" bpmnElement="ExtractSource1">
@@ -135,23 +181,52 @@
       <bpmndi:BPMNShape id="ExtractSource2_di" bpmnElement="ExtractSource2">
         <dc:Bounds x="260" y="260" width="120" height="60" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="SubProcess_Norm1_di" bpmnElement="SubProcess_Norm1" isExpanded="true">
-        <dc:Bounds x="440" y="50" width="300" height="120" />
+      <bpmndi:BPMNShape id="NormalizeSource1_di" bpmnElement="NormalizeSource1" isExpanded="true">
+        <dc:Bounds x="440" y="50" width="320" height="120" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="SubProcess_Norm2_di" bpmnElement="SubProcess_Norm2" isExpanded="true">
-        <dc:Bounds x="440" y="230" width="300" height="120" />
+      <bpmndi:BPMNShape id="NormalizeSource2_di" bpmnElement="NormalizeSource2" isExpanded="true">
+        <dc:Bounds x="440" y="230" width="320" height="120" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ParallelGateway_2_di" bpmnElement="ParallelGateway_2">
-        <dc:Bounds x="800" y="175" width="50" height="50" />
+      <bpmndi:BPMNShape id="ParallelGateway_Join_di" bpmnElement="ParallelGateway_Join">
+        <dc:Bounds x="820" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="MergeTask_di" bpmnElement="MergeTask">
-        <dc:Bounds x="910" y="160" width="120" height="60" />
+        <dc:Bounds x="930" y="160" width="120" height="60" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="LoadTask_di" bpmnElement="LoadTask">
-        <dc:Bounds x="1080" y="160" width="120" height="60" />
+      <bpmndi:BPMNShape id="CheckExistsGateway_di" bpmnElement="CheckExistsGateway">
+        <dc:Bounds x="1100" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UpdateRecord_di" bpmnElement="UpdateRecord">
+        <dc:Bounds x="1200" y="100" width="120" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="InsertRecord_di" bpmnElement="InsertRecord">
+        <dc:Bounds x="1200" y="240" width="120" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CloseConnections_di" bpmnElement="CloseConnections">
+        <dc:Bounds x="1380" y="160" width="120" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="LogTask_di" bpmnElement="LogTask">
+        <dc:Bounds x="1540" y="160" width="120" height="60" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
-        <dc:Bounds x="1250" y="180" width="36" height="36" />
+        <dc:Bounds x="1720" y="180" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      
+      <!-- Data Object shapes -->
+      <bpmndi:BPMNShape id="DataObject_Src1_Records_di" bpmnElement="DataObject_Src1_Records">
+        <dc:Bounds x="260" y="170" width="100" height="40" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObject_Src2_Records_di" bpmnElement="DataObject_Src2_Records">
+        <dc:Bounds x="260" y="350" width="100" height="40" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObject_Normalized1_di" bpmnElement="DataObject_Normalized1">
+        <dc:Bounds x="600" y="180" width="100" height="40" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObject_Normalized2_di" bpmnElement="DataObject_Normalized2">
+        <dc:Bounds x="600" y="360" width="100" height="40" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="DataObject_MergedDict_di" bpmnElement="DataObject_MergedDict">
+        <dc:Bounds x="930" y="250" width="100" height="40" />
       </bpmndi:BPMNShape>
       
       <!-- Edges -->
@@ -159,43 +234,87 @@
         <di:waypoint x="116" y="198" />
         <di:waypoint x="160" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge2" bpmnElement="Flow_to_Extract1">
+      <bpmndi:BPMNEdge id="Edge2" bpmnElement="Flow_to_ExtractSource1">
         <di:waypoint x="185" y="175" />
         <di:waypoint x="185" y="110" />
         <di:waypoint x="260" y="110" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge3" bpmnElement="Flow_to_Extract2">
+      <bpmndi:BPMNEdge id="Edge3" bpmnElement="Flow_to_ExtractSource2">
         <di:waypoint x="185" y="225" />
         <di:waypoint x="185" y="290" />
         <di:waypoint x="260" y="290" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge4" bpmnElement="Flow_from_Extract1">
+      <bpmndi:BPMNEdge id="Edge4" bpmnElement="Flow_From_Extract1">
         <di:waypoint x="380" y="110" />
         <di:waypoint x="440" y="110" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge5" bpmnElement="Flow_from_Extract2">
+      <bpmndi:BPMNEdge id="Edge5" bpmnElement="Flow_From_Extract2">
         <di:waypoint x="380" y="290" />
         <di:waypoint x="440" y="290" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge6" bpmnElement="Flow_from_Norm1">
-        <di:waypoint x="740" y="110" />
-        <di:waypoint x="800" y="200" />
+      <bpmndi:BPMNEdge id="Edge6" bpmnElement="Flow_From_Norm1">
+        <di:waypoint x="760" y="110" />
+        <di:waypoint x="820" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge7" bpmnElement="Flow_from_Norm2">
-        <di:waypoint x="740" y="290" />
-        <di:waypoint x="800" y="200" />
+      <bpmndi:BPMNEdge id="Edge7" bpmnElement="Flow_From_Norm2">
+        <di:waypoint x="760" y="290" />
+        <di:waypoint x="820" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge8" bpmnElement="Flow_to_Merge">
-        <di:waypoint x="850" y="200" />
-        <di:waypoint x="910" y="190" />
+        <di:waypoint x="870" y="200" />
+        <di:waypoint x="930" y="190" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge9" bpmnElement="Flow_to_Load">
-        <di:waypoint x="1030" y="190" />
-        <di:waypoint x="1080" y="190" />
+      <bpmndi:BPMNEdge id="Edge9" bpmnElement="Flow_to_CheckExists">
+        <di:waypoint x="1050" y="190" />
+        <di:waypoint x="1100" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge10" bpmnElement="Flow_to_End">
-        <di:waypoint x="1200" y="190" />
-        <di:waypoint x="1250" y="198" />
+      <bpmndi:BPMNEdge id="Edge10" bpmnElement="Flow_If_Exists">
+        <di:waypoint x="1125" y="175" />
+        <di:waypoint x="1125" y="130" />
+        <di:waypoint x="1200" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge11" bpmnElement="Flow_If_NotExists">
+        <di:waypoint x="1125" y="225" />
+        <di:waypoint x="1125" y="270" />
+        <di:waypoint x="1200" y="270" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge12" bpmnElement="Flow_After_Update">
+        <di:waypoint x="1320" y="130" />
+        <di:waypoint x="1380" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge13" bpmnElement="Flow_After_Insert">
+        <di:waypoint x="1320" y="270" />
+        <di:waypoint x="1380" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge14" bpmnElement="Flow_to_Log">
+        <di:waypoint x="1500" y="190" />
+        <di:waypoint x="1540" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge15" bpmnElement="Flow_to_End">
+        <di:waypoint x="1660" y="190" />
+        <di:waypoint x="1720" y="198" />
+      </bpmndi:BPMNEdge>
+      
+      <!-- Association edges (пунктирные линии для Data Objects) -->
+      <bpmndi:BPMNEdge id="AssocEdge_Src1" bpmnElement="Assoc_Src1">
+        <di:waypoint x="320" y="140" />
+        <di:waypoint x="320" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocEdge_Src2" bpmnElement="Assoc_Src2">
+        <di:waypoint x="320" y="320" />
+        <di:waypoint x="320" y="350" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocEdge_Norm1" bpmnElement="Assoc_Norm1">
+        <di:waypoint x="600" y="170" />
+        <di:waypoint x="650" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocEdge_Norm2" bpmnElement="Assoc_Norm2">
+        <di:waypoint x="600" y="350" />
+        <di:waypoint x="650" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="AssocEdge_Merge" bpmnElement="Assoc_Merge">
+        <di:waypoint x="990" y="220" />
+        <di:waypoint x="980" y="250" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

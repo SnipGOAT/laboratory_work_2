@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="ETL_Process_Detailed" name="ETL с нормализацией (расширенный)" isExecutable="true">
+  <bpmn:process id="ETL_Process_Clean" name="ETL: сбор и объединение данных" isExecutable="true">
     <!-- Start Event -->
     <bpmn:startEvent id="StartEvent_1" name="Начало ETL">
       <bpmn:outgoing>Flow_to_ParallelGateway</bpmn:outgoing>
     </bpmn:startEvent>
     
-    <!-- Parallel Gateway (разветвление) -->
+    <!-- Параллельный шлюз (разветвление) -->
     <bpmn:parallelGateway id="ParallelGateway_1" name="Разветвление">
       <bpmn:incoming>Flow_to_ParallelGateway</bpmn:incoming>
       <bpmn:outgoing>Flow_to_Extract1</bpmn:outgoing>
@@ -14,13 +14,13 @@
     </bpmn:parallelGateway>
     
     <!-- Извлечение из source1 -->
-    <bpmn:serviceTask id="ExtractSource1" name="Подключиться к source1.db и прочитать projects">
+    <bpmn:serviceTask id="ExtractSource1" name="Извлечь данные из source1.db">
       <bpmn:incoming>Flow_to_Extract1</bpmn:incoming>
       <bpmn:outgoing>Flow_from_Extract1</bpmn:outgoing>
     </bpmn:serviceTask>
     
     <!-- Извлечение из source2 -->
-    <bpmn:serviceTask id="ExtractSource2" name="Подключиться к source2.db и прочитать resumes">
+    <bpmn:serviceTask id="ExtractSource2" name="Извлечь данные из source2.db">
       <bpmn:incoming>Flow_to_Extract2</bpmn:incoming>
       <bpmn:outgoing>Flow_from_Extract2</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -42,7 +42,7 @@
         <bpmn:incoming>Flow_Sub1_3</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub1_4</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="SortTask1" name="Сортировка токенов и склейка">
+      <bpmn:scriptTask id="SortTask1" name="Сортировка и склейка">
         <bpmn:incoming>Flow_Sub1_4</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub1_5</bpmn:outgoing>
       </bpmn:scriptTask>
@@ -54,7 +54,7 @@
       <bpmn:sequenceFlow id="Flow_Sub1_5" sourceRef="SortTask1" targetRef="SubEnd1" />
     </bpmn:subProcess>
     
-    <!-- Подпроцесс нормализации для source2 (аналогичный) -->
+    <!-- Подпроцесс нормализации для source2 -->
     <bpmn:subProcess id="SubProcess_Norm2" name="Нормализация ФИО (source2)">
       <bpmn:incoming>Flow_from_Extract2</bpmn:incoming>
       <bpmn:outgoing>Flow_from_Norm2</bpmn:outgoing>
@@ -71,7 +71,7 @@
         <bpmn:incoming>Flow_Sub2_3</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub2_4</bpmn:outgoing>
       </bpmn:scriptTask>
-      <bpmn:scriptTask id="SortTask2" name="Сортировка токенов и склейка">
+      <bpmn:scriptTask id="SortTask2" name="Сортировка и склейка">
         <bpmn:incoming>Flow_Sub2_4</bpmn:incoming>
         <bpmn:outgoing>Flow_Sub2_5</bpmn:outgoing>
       </bpmn:scriptTask>
@@ -83,42 +83,31 @@
       <bpmn:sequenceFlow id="Flow_Sub2_5" sourceRef="SortTask2" targetRef="SubEnd2" />
     </bpmn:subProcess>
     
-    <!-- Сведение -->
+    <!-- Сведение параллельных веток -->
     <bpmn:parallelGateway id="ParallelGateway_2" name="Сведение">
       <bpmn:incoming>Flow_from_Norm1</bpmn:incoming>
       <bpmn:incoming>Flow_from_Norm2</bpmn:incoming>
       <bpmn:outgoing>Flow_to_Merge</bpmn:outgoing>
     </bpmn:parallelGateway>
     
-    <!-- Объединение в словарь -->
-    <bpmn:serviceTask id="MergeTask" name="Объединить данные в словарь по normalized_key">
+    <!-- Объединение данных -->
+    <bpmn:serviceTask id="MergeTask" name="Объединить данные в словарь по нормализованному ключу">
       <bpmn:incoming>Flow_to_Merge</bpmn:incoming>
-      <bpmn:outgoing>Flow_to_Gateway</bpmn:outgoing>
+      <bpmn:outgoing>Flow_to_Load</bpmn:outgoing>
     </bpmn:serviceTask>
     
-    <!-- Exclusive Gateway для проверки существования записи -->
-    <bpmn:exclusiveGateway id="ExclusiveGateway_1" name="Существует?">
-      <bpmn:incoming>Flow_to_Gateway</bpmn:incoming>
-      <bpmn:outgoing>Flow_Update</bpmn:outgoing>
-      <bpmn:outgoing>Flow_Insert</bpmn:outgoing>
-    </bpmn:exclusiveGateway>
-    
-    <bpmn:serviceTask id="UpdateTask" name="Обновить запись в ХД">
-      <bpmn:incoming>Flow_Update</bpmn:incoming>
+    <!-- Загрузка в ХД -->
+    <bpmn:serviceTask id="LoadTask" name="Загрузить объединённые записи в ХД">
+      <bpmn:incoming>Flow_to_Load</bpmn:incoming>
       <bpmn:outgoing>Flow_to_End</bpmn:outgoing>
-    </bpmn:serviceTask>
-    <bpmn:serviceTask id="InsertTask" name="Вставить новую запись в ХД">
-      <bpmn:incoming>Flow_Insert</bpmn:incoming>
-      <bpmn:outgoing>Flow_to_End_Insert</bpmn:outgoing>
     </bpmn:serviceTask>
     
     <!-- End Event -->
     <bpmn:endEvent id="EndEvent_1" name="Конец ETL">
       <bpmn:incoming>Flow_to_End</bpmn:incoming>
-      <bpmn:incoming>Flow_to_End_Insert</bpmn:incoming>
     </bpmn:endEvent>
     
-    <!-- Sequence flows (верхний уровень) -->
+    <!-- Sequence Flows верхнего уровня -->
     <bpmn:sequenceFlow id="Flow_to_ParallelGateway" sourceRef="StartEvent_1" targetRef="ParallelGateway_1" />
     <bpmn:sequenceFlow id="Flow_to_Extract1" sourceRef="ParallelGateway_1" targetRef="ExtractSource1" />
     <bpmn:sequenceFlow id="Flow_to_Extract2" sourceRef="ParallelGateway_1" targetRef="ExtractSource2" />
@@ -127,109 +116,86 @@
     <bpmn:sequenceFlow id="Flow_from_Norm1" sourceRef="SubProcess_Norm1" targetRef="ParallelGateway_2" />
     <bpmn:sequenceFlow id="Flow_from_Norm2" sourceRef="SubProcess_Norm2" targetRef="ParallelGateway_2" />
     <bpmn:sequenceFlow id="Flow_to_Merge" sourceRef="ParallelGateway_2" targetRef="MergeTask" />
-    <bpmn:sequenceFlow id="Flow_to_Gateway" sourceRef="MergeTask" targetRef="ExclusiveGateway_1" />
-    <bpmn:sequenceFlow id="Flow_Update" sourceRef="ExclusiveGateway_1" targetRef="UpdateTask" />
-    <bpmn:sequenceFlow id="Flow_Insert" sourceRef="ExclusiveGateway_1" targetRef="InsertTask" />
-    <bpmn:sequenceFlow id="Flow_to_End" sourceRef="UpdateTask" targetRef="EndEvent_1" />
-    <bpmn:sequenceFlow id="Flow_to_End_Insert" sourceRef="InsertTask" targetRef="EndEvent_1" />
+    <bpmn:sequenceFlow id="Flow_to_Load" sourceRef="MergeTask" targetRef="LoadTask" />
+    <bpmn:sequenceFlow id="Flow_to_End" sourceRef="LoadTask" targetRef="EndEvent_1" />
   </bpmn:process>
   
   <!-- BPMN Diagram (графическое расположение) -->
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ETL_Process_Detailed">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="ETL_Process_Clean">
       <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
-        <dc:Bounds x="80" y="200" width="36" height="36" />
+        <dc:Bounds x="80" y="180" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ParallelGateway_1_di" bpmnElement="ParallelGateway_1">
-        <dc:Bounds x="160" y="195" width="50" height="50" />
+        <dc:Bounds x="160" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ExtractSource1_di" bpmnElement="ExtractSource1">
-        <dc:Bounds x="260" y="100" width="120" height="60" />
+        <dc:Bounds x="260" y="80" width="120" height="60" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ExtractSource2_di" bpmnElement="ExtractSource2">
-        <dc:Bounds x="260" y="280" width="120" height="60" />
+        <dc:Bounds x="260" y="260" width="120" height="60" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="SubProcess_Norm1_di" bpmnElement="SubProcess_Norm1" isExpanded="true">
-        <dc:Bounds x="440" y="70" width="300" height="120" />
+        <dc:Bounds x="440" y="50" width="300" height="120" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="SubProcess_Norm2_di" bpmnElement="SubProcess_Norm2" isExpanded="true">
-        <dc:Bounds x="440" y="250" width="300" height="120" />
+        <dc:Bounds x="440" y="230" width="300" height="120" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="ParallelGateway_2_di" bpmnElement="ParallelGateway_2">
-        <dc:Bounds x="800" y="195" width="50" height="50" />
+        <dc:Bounds x="800" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="MergeTask_di" bpmnElement="MergeTask">
-        <dc:Bounds x="910" y="180" width="120" height="60" />
+        <dc:Bounds x="910" y="160" width="120" height="60" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ExclusiveGateway_1_di" bpmnElement="ExclusiveGateway_1">
-        <dc:Bounds x="1080" y="195" width="50" height="50" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="UpdateTask_di" bpmnElement="UpdateTask">
-        <dc:Bounds x="1190" y="130" width="120" height="60" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="InsertTask_di" bpmnElement="InsertTask">
-        <dc:Bounds x="1190" y="250" width="120" height="60" />
+      <bpmndi:BPMNShape id="LoadTask_di" bpmnElement="LoadTask">
+        <dc:Bounds x="1080" y="160" width="120" height="60" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
-        <dc:Bounds x="1370" y="200" width="36" height="36" />
+        <dc:Bounds x="1250" y="180" width="36" height="36" />
       </bpmndi:BPMNShape>
       
       <!-- Edges -->
       <bpmndi:BPMNEdge id="Edge1" bpmnElement="Flow_to_ParallelGateway">
-        <di:waypoint x="116" y="218" />
-        <di:waypoint x="160" y="220" />
+        <di:waypoint x="116" y="198" />
+        <di:waypoint x="160" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge2" bpmnElement="Flow_to_Extract1">
-        <di:waypoint x="185" y="195" />
-        <di:waypoint x="185" y="130" />
-        <di:waypoint x="260" y="130" />
+        <di:waypoint x="185" y="175" />
+        <di:waypoint x="185" y="110" />
+        <di:waypoint x="260" y="110" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge3" bpmnElement="Flow_to_Extract2">
-        <di:waypoint x="185" y="245" />
-        <di:waypoint x="185" y="310" />
-        <di:waypoint x="260" y="310" />
+        <di:waypoint x="185" y="225" />
+        <di:waypoint x="185" y="290" />
+        <di:waypoint x="260" y="290" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge4" bpmnElement="Flow_from_Extract1">
-        <di:waypoint x="380" y="130" />
-        <di:waypoint x="440" y="130" />
+        <di:waypoint x="380" y="110" />
+        <di:waypoint x="440" y="110" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge5" bpmnElement="Flow_from_Extract2">
-        <di:waypoint x="380" y="310" />
-        <di:waypoint x="440" y="310" />
+        <di:waypoint x="380" y="290" />
+        <di:waypoint x="440" y="290" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge6" bpmnElement="Flow_from_Norm1">
-        <di:waypoint x="740" y="130" />
-        <di:waypoint x="800" y="220" />
+        <di:waypoint x="740" y="110" />
+        <di:waypoint x="800" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge7" bpmnElement="Flow_from_Norm2">
-        <di:waypoint x="740" y="310" />
-        <di:waypoint x="800" y="220" />
+        <di:waypoint x="740" y="290" />
+        <di:waypoint x="800" y="200" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge8" bpmnElement="Flow_to_Merge">
-        <di:waypoint x="850" y="220" />
-        <di:waypoint x="910" y="210" />
+        <di:waypoint x="850" y="200" />
+        <di:waypoint x="910" y="190" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge9" bpmnElement="Flow_to_Gateway">
-        <di:waypoint x="1030" y="210" />
-        <di:waypoint x="1080" y="220" />
+      <bpmndi:BPMNEdge id="Edge9" bpmnElement="Flow_to_Load">
+        <di:waypoint x="1030" y="190" />
+        <di:waypoint x="1080" y="190" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge10" bpmnElement="Flow_Update">
-        <di:waypoint x="1105" y="195" />
-        <di:waypoint x="1105" y="160" />
-        <di:waypoint x="1190" y="160" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge11" bpmnElement="Flow_Insert">
-        <di:waypoint x="1105" y="245" />
-        <di:waypoint x="1105" y="280" />
-        <di:waypoint x="1190" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge12" bpmnElement="Flow_to_End">
-        <di:waypoint x="1310" y="160" />
-        <di:waypoint x="1370" y="218" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge13" bpmnElement="Flow_to_End_Insert">
-        <di:waypoint x="1310" y="280" />
-        <di:waypoint x="1370" y="218" />
+      <bpmndi:BPMNEdge id="Edge10" bpmnElement="Flow_to_End">
+        <di:waypoint x="1200" y="190" />
+        <di:waypoint x="1250" y="198" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
